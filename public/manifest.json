@@ -1,0 +1,16 @@
+{
+  "name": "ID Scan",
+  "short_name": "IDScan",
+  "description": "Student ID Scanner",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/window.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
