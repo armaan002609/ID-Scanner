@@ -65,6 +65,8 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('OCR Error:', error);
-    return NextResponse.json({ error: 'Failed to process image' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || 'Failed to process image. Check Vercel logs.' 
+    }, { status: 500 });
   }
 }
