@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, Save, AlertCircle } from 'lucide-react';
 import { db } from '@/lib/db';
 import Link from 'next/link';
+import { createWorker } from 'tesseract.js';
+import { parseOCRText } from '@/lib/ocr-mapping';
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -36,22 +38,17 @@ export default function ReviewPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const res = await fetch('/api/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Img })
-      });
+      const worker = await createWorker('eng');
+      const ret = await worker.recognize(base64Img);
+      await worker.terminate();
       
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to process image');
-      }
+      const rawText = ret.data.text;
+      const extractedFields = parseOCRText(rawText);
 
-      setName(data.fields.name || '');
-      setCourse(data.fields.course || '');
-      setRollNo(data.fields.rollNo || '');
-      setConfidence(data.fields.confidence);
+      setName(extractedFields.name || '');
+      setCourse(extractedFields.course || '');
+      setRollNo(extractedFields.rollNo || '');
+      setConfidence(extractedFields.confidence);
       
     } catch (err: any) {
       console.error(err);
