@@ -82,7 +82,22 @@ export default function ScanPage() {
     if (!ctx) return;
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+    // Apply grayscale & high contrast filter to improve Tesseract.js accuracy
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      const contrast = 1.5; // Increase contrast
+      const val = (avg - 128) * contrast + 128;
+      const finalVal = Math.min(255, Math.max(0, val));
+      data[i] = finalVal;
+      data[i + 1] = finalVal;
+      data[i + 2] = finalVal;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     
     // Save to session storage and navigate
     sessionStorage.setItem('scannedImage', dataUrl);

@@ -9,28 +9,36 @@ export interface ExtractedFields {
 }
 
 export function parseOCRText(text: string): ExtractedFields {
-  // Normalize whitespace
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  let name = '';
+  let course = '';
+  let rollNo = '';
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    
+    if (lowerLine.includes('name') && !name) {
+      name = line.replace(/.*name[\s:-]*/i, '').trim();
+    } else if (lowerLine.includes('course') && !course) {
+      course = line.replace(/.*course[\s:-]*/i, '').trim();
+    } else if ((lowerLine.includes('roll') || lowerLine.includes('enroll')) && !rollNo) {
+      rollNo = line.replace(/.*roll(?: no| number)?[\s:-]*/i, '').trim();
+    }
+  }
+
+  // Fallbacks if newlines were destroyed by Tesseract
   const normalizedText = text.replace(/\s+/g, ' ').trim();
   
-  // Basic heuristics for a generic ID card
-  // These regexes are highly dependent on the card format.
-  
-  // Look for something that resembles a Roll Number (e.g., 2-4 letters followed by numbers)
-  const rollNoMatch = normalizedText.match(/([A-Z]{2,4}[- ]?\d{4,8})/i);
-  const rollNo = rollNoMatch ? rollNoMatch[1].replace(/[- ]/g, '').toUpperCase() : '';
+  if (!rollNo) {
+    const rollNoMatch = normalizedText.match(/([A-Z]{2,4}[- ]?\d{4,8})/i);
+    if (rollNoMatch) rollNo = rollNoMatch[1];
+  }
 
-  // Look for keywords
-  const nameMatch = normalizedText.match(/(?:Name|Student)[:\-\s]*([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-  let name = nameMatch ? nameMatch[1] : '';
-
-  const courseMatch = normalizedText.match(/(?:Course|Program|Branch)[:\-\s]*([A-Za-z.\- ]+)/i);
-  let course = courseMatch ? courseMatch[1].trim() : '';
-
-  // Fallbacks based on typical positional or structural features if keyword matching fails
   if (!name) {
     // Attempt to find capitalized words that might be a name
-    const capsMatch = normalizedText.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
-    if (capsMatch) name = capsMatch[1];
+    const capsMatch = normalizedText.match(/(?:Name|Student)[:\-\s]*([A-Za-z\s]+)/i);
+    if (capsMatch) name = capsMatch[1].trim();
   }
 
   // Determine overall confidence
