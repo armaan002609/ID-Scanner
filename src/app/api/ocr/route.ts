@@ -21,7 +21,35 @@ export async function POST(request: Request) {
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+      // Dynamically determine the best available model
+      let selectedModel = 'gemini-1.5-flash'; // Fallback
+      try {
+        const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`);
+        const modelsData = await modelsRes.json();
+        
+        if (modelsData && modelsData.models) {
+          const availableModels = modelsData.models.map((m: any) => m.name);
+          const preferredModels = [
+            'models/gemini-2.5-flash',
+            'models/gemini-2.0-flash',
+            'models/gemini-1.5-flash-latest',
+            'models/gemini-1.5-flash',
+            'models/gemini-pro-vision'
+          ];
+          
+          for (const model of preferredModels) {
+            if (availableModels.includes(model)) {
+              selectedModel = model.replace('models/', '');
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to list models, using fallback.', e);
+      }
+
+      console.log(`Using model: ${selectedModel}`);
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${geminiApiKey}`;
       
       const prompt = `Extract the text from this ID card. I need the name, course, and roll number (or student ID).
       Return ONLY a JSON object with the exact keys: "name", "course", "rollNo".
