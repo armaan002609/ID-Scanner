@@ -18,12 +18,17 @@ export function parseOCRText(text: string): ExtractedFields {
   for (const line of lines) {
     const lowerLine = line.toLowerCase();
     
-    if (lowerLine.includes('name') && !name) {
-      name = line.replace(/.*name[\s:-]*/i, '').trim();
-    } else if (lowerLine.includes('course') && !course) {
-      course = line.replace(/.*course[\s:-]*/i, '').trim();
-    } else if ((lowerLine.includes('roll') || lowerLine.includes('enroll')) && !rollNo) {
-      rollNo = line.replace(/.*roll(?: no| number)?[\s:-]*/i, '').trim();
+    // Fuzzy match for 'name' (could be 'nane', 'n4me', 'nme')
+    if (lowerLine.match(/n[a4m]?me/i) && !name) {
+      name = line.replace(/.*n[a4m]?me[\s:-]*/i, '').trim();
+    } 
+    // Fuzzy match for 'course'
+    else if (lowerLine.match(/c[o0]ur[s5]e/i) && !course) {
+      course = line.replace(/.*c[o0]ur[s5]e[\s:-]*/i, '').trim();
+    } 
+    // Fuzzy match for 'roll no'
+    else if (lowerLine.match(/r[o0]ll|enr[o0]ll/i) && !rollNo) {
+      rollNo = line.replace(/.*(?:r[o0]ll|enr[o0]ll)(?:\s*(?:n[o0]|number))?[\s:-]*/i, '').trim();
     }
   }
 

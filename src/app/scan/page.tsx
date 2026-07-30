@@ -8,6 +8,7 @@ import Link from 'next/link';
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const guideRef = useRef<HTMLDivElement>(null);
   const [hasCamera, setHasCamera] = useState<boolean>(true);
   const [cameraError, setCameraError] = useState<string>("");
   const [torchEnabled, setTorchEnabled] = useState(false);
@@ -69,40 +70,64 @@ export default function ScanPage() {
   };
 
   const captureImage = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !guideRef.current) return;
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    const guide = guideRef.current;
     
-    // Set canvas to actual video dimensions to capture full res
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const guideRect = guide.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    
+    const videoRatio = video.videoWidth / video.videoHeight;
+    const screenRatio = videoRect.width / videoRect.height;
+    
+    let renderWidth = videoRect.width;
+    let renderHeight = videoRect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (videoRatio > screenRatio) {
+      renderWidth = videoRect.height * videoRatio;
+      offsetX = (renderWidth - videoRect.width) / 2;
+    } else {
+      renderHeight = videoRect.width / videoRatio;
+      offsetY = (renderHeight - videoRect.height) / 2;
+    }
+    
+    const scale = video.videoWidth / renderWidth;
+    
+    const cropX = (guideRect.left - videoRect.left + offsetX) * scale;
+    const cropY = (guideRect.top - videoRect.top + offsetY) * scale;
+    const cropWidth = guideRect.width * scale;
+    const cropHeight = guideRect.height * scale;
+
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
 
-    // Apply grayscale & high contrast filter to improve Tesseract.js accuracy
+    // Apply strict binarization to make text pop for Tesseract
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
       const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      const contrast = 1.5; // Increase contrast
-      const val = (avg - 128) * contrast + 128;
-      const finalVal = Math.min(255, Math.max(0, val));
-      data[i] = finalVal;
-      data[i + 1] = finalVal;
-      data[i + 2] = finalVal;
+      // High contrast binarization (approximate thresholding)
+      const threshold = 128;
+      const val = avg < threshold ? 0 : 255;
+      data[i] = val;
+      data[i + 1] = val;
+      data[i + 2] = val;
     }
     ctx.putImageData(imageData, 0, 0);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     
-    // Save to session storage and navigate
     sessionStorage.setItem('scannedImage', dataUrl);
     
-    // Stop camera before navigating
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
     }
@@ -163,7 +188,7 @@ export default function ScanPage() {
       {/* Viewfinder Guide */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
         {/* Frame for standard CR80 ID Card aspect ratio (~1.58) */}
-        <div className="w-full max-w-sm aspect-[1.58/1] border-2 border-white/50 guide-box rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+        <div ref={guideRef} className="w-full max-w-sm aspect-[1.58/1] border-2 border-white/50 guide-box rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
           <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl-lg" />
           <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
           <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />

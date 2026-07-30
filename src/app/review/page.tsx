@@ -38,22 +38,17 @@ export default function ReviewPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const geminiApiKey = localStorage.getItem('geminiApiKey') || '';
-      const openRouterApiKey = localStorage.getItem('openRouterApiKey') || '';
+      const worker = await createWorker('eng');
       
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Img, geminiApiKey, openRouterApiKey })
+      // Optimize Tesseract for blocks of text (PSM 6)
+      await worker.setParameters({
+        tessedit_pageseg_mode: '6',
       });
       
-      const data = await response.json();
+      const ret = await worker.recognize(base64Img);
+      await worker.terminate();
       
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to extract data from image.');
-      }
-      
-      const extractedFields = data.fields;
+      const extractedFields = parseOCRText(ret.data.text);
 
       setName(extractedFields.name || '');
       setCourse(extractedFields.course || '');
@@ -62,7 +57,7 @@ export default function ReviewPage() {
       
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Network error while processing image.');
+      setError(err.message || 'Error processing image locally.');
     } finally {
       setIsProcessing(false);
     }
