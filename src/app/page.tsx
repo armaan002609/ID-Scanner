@@ -3,13 +3,30 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { downloadRecordsAsCSV } from '@/lib/csv';
-import { Download, Scan, Users, Trash2 } from 'lucide-react';
+import { Download, Scan, Users, Trash2, Key, Check } from 'lucide-react';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const records = useLiveQuery(() => db.records.toArray());
   const pendingCount = records?.filter(r => r.status === 'pending').length || 0;
   
+  const [apiKey, setApiKey] = useState('');
+  const [savedKey, setSavedKey] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('geminiApiKey');
+    if (saved) {
+      setApiKey(saved);
+    }
+  }, []);
+
+  const saveApiKey = () => {
+    localStorage.setItem('geminiApiKey', apiKey);
+    setSavedKey(true);
+    setTimeout(() => setSavedKey(false), 2000);
+  };
+
   const handleDownload = () => {
     if (!records || records.length === 0) return;
     downloadRecordsAsCSV(records);
@@ -27,7 +44,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-6 max-w-lg mx-auto flex flex-col items-center">
+    <main className="min-h-screen p-6 max-w-lg mx-auto flex flex-col items-center pb-24">
       <div className="w-full flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600">
           ID Scan
@@ -66,6 +83,35 @@ export default function Home() {
           <Download className="h-5 w-5" />
           <span>Download CSV</span>
         </button>
+      </div>
+
+      {/* API Key Settings */}
+      <div className="w-full mt-10">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Settings</h2>
+        <div className="glass p-4 rounded-xl">
+          <label className="block text-sm font-medium mb-2 flex items-center">
+            <Key className="h-4 w-4 mr-2" />
+            Gemini API Key
+          </label>
+          <div className="flex space-x-2">
+            <input 
+              type="password" 
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="AIzaSy..."
+              className="flex-1 p-3 rounded-lg border bg-surface border-border focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+            />
+            <button 
+              onClick={saveApiKey}
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center min-w-[80px]"
+            >
+              {savedKey ? <Check className="h-4 w-4 text-green-500" /> : 'Save'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Required for high-accuracy ID card scanning via Gemini AI. Saved locally on your device.
+          </p>
+        </div>
       </div>
 
       {/* Recent Activity */}

@@ -38,12 +38,20 @@ export default function ReviewPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const worker = await createWorker('eng');
-      const ret = await worker.recognize(base64Img);
-      await worker.terminate();
+      const geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Img, geminiApiKey })
+      });
       
-      const rawText = ret.data.text;
-      const extractedFields = parseOCRText(rawText);
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to extract data from image.');
+      }
+      
+      const extractedFields = data.fields;
 
       setName(extractedFields.name || '');
       setCourse(extractedFields.course || '');
