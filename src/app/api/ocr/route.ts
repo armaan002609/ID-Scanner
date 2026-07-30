@@ -30,6 +30,9 @@ export async function POST(request: Request) {
         if (modelsData && modelsData.models) {
           const availableModels = modelsData.models.map((m: any) => m.name);
           const preferredModels = [
+            'models/gemini-3.5-flash',
+            'models/gemini-3.1-flash',
+            'models/gemini-3.0-flash',
             'models/gemini-2.5-flash',
             'models/gemini-2.0-flash',
             'models/gemini-1.5-flash-latest',
