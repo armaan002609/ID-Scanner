@@ -39,10 +39,12 @@ export default function ReviewPage() {
     setError(null);
     try {
       const geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+      const openRouterApiKey = localStorage.getItem('openRouterApiKey') || '';
+      
       const response = await fetch('/api/ocr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Img, geminiApiKey })
+        body: JSON.stringify({ image: base64Img, geminiApiKey, openRouterApiKey })
       });
       
       const data = await response.json();

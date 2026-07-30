@@ -12,19 +12,28 @@ export default function Home() {
   const pendingCount = records?.filter(r => r.status === 'pending').length || 0;
   
   const [apiKey, setApiKey] = useState('');
+  const [openRouterKey, setOpenRouterKey] = useState('');
   const [savedKey, setSavedKey] = useState(false);
+  const [savedOrKey, setSavedOrKey] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('geminiApiKey');
-    if (saved) {
-      setApiKey(saved);
-    }
+    if (saved) setApiKey(saved);
+    
+    const savedOr = localStorage.getItem('openRouterApiKey');
+    if (savedOr) setOpenRouterKey(savedOr);
   }, []);
 
   const saveApiKey = () => {
     localStorage.setItem('geminiApiKey', apiKey);
     setSavedKey(true);
     setTimeout(() => setSavedKey(false), 2000);
+  };
+
+  const saveOpenRouterKey = () => {
+    localStorage.setItem('openRouterApiKey', openRouterKey);
+    setSavedOrKey(true);
+    setTimeout(() => setSavedOrKey(false), 2000);
   };
 
   const handleDownload = () => {
@@ -88,7 +97,8 @@ export default function Home() {
       {/* API Key Settings */}
       <div className="w-full mt-10">
         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Settings</h2>
-        <div className="glass p-4 rounded-xl">
+        
+        <div className="glass p-4 rounded-xl mb-4">
           <label className="block text-sm font-medium mb-2 flex items-center">
             <Key className="h-4 w-4 mr-2" />
             Gemini API Key
@@ -109,7 +119,32 @@ export default function Home() {
             </button>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-            Required for high-accuracy ID card scanning via Gemini AI. Saved locally on your device.
+            Optional: Direct Google Gemini API Key
+          </p>
+        </div>
+
+        <div className="glass p-4 rounded-xl">
+          <label className="block text-sm font-medium mb-2 flex items-center">
+            <Key className="h-4 w-4 mr-2" />
+            OpenRouter API Key
+          </label>
+          <div className="flex space-x-2">
+            <input 
+              type="password" 
+              value={openRouterKey}
+              onChange={(e) => setOpenRouterKey(e.target.value)}
+              placeholder="sk-or-v1-..."
+              className="flex-1 p-3 rounded-lg border bg-surface border-border focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
+            />
+            <button 
+              onClick={saveOpenRouterKey}
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center min-w-[80px]"
+            >
+              {savedOrKey ? <Check className="h-4 w-4 text-green-500" /> : 'Save'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Optional: OpenRouter API key (uses google/gemini-flash-1.5 by default)
           </p>
         </div>
       </div>

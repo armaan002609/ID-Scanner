@@ -4,19 +4,68 @@ import { parseOCRText } from '@/lib/ocr-mapping';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { image, geminiApiKey: clientApiKey } = body; // Base64 encoded image string and optional API key
+    const { image, geminiApiKey: clientApiKey, openRouterApiKey } = body; 
 
     if (!image) {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 });
     }
 
-    // Check if Gemini API credentials exist from client or server
     const geminiApiKey = clientApiKey || process.env.GEMINI_API_KEY;
 
     let rawText = '';
     let extractedFields: any = { name: '', course: '', rollNo: '', confidence: 'not_found' };
 
-    if (geminiApiKey) {
+    const prompt = `Extract the text from this ID card. I need the name, course, and roll number (or student ID).
+    Return ONLY a JSON object with the exact keys: "name", "course", "rollNo".
+    If you cannot find a value, use an empty string.`;
+
+    if (openRouterApiKey) {
+      console.log('Using OpenRouter API');
+      const orUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      const orResponse = await fetch(orUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openRouterApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: image } }
+              ]
+            }
+          ]
+        })
+      });
+
+      const orData = await orResponse.json();
+      if (orData.error) {
+        throw new Error(orData.error.message || 'OpenRouter API Error');
+      }
+
+      const textOutput = orData.choices?.[0]?.message?.content || '{}';
+      rawText = textOutput;
+      try {
+        const parsed = JSON.parse(textOutput);
+        extractedFields = {
+          name: parsed.name || '',
+          course: parsed.course || '',
+          rollNo: parsed.rollNo || '',
+          confidence: (parsed.name && parsed.course && parsed.rollNo) ? 'high' : 
+                      (parsed.name || parsed.course || parsed.rollNo) ? 'low' : 'not_found'
+        };
+      } catch (e) {
+        console.error('Failed to parse OR JSON:', textOutput);
+        extractedFields = parseOCRText(textOutput);
+      }
+
+    } else if (geminiApiKey) {
+      console.log('Using direct Gemini API');
       const mimeTypeMatch = image.match(/^data:(image\/\w+);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
@@ -53,10 +102,6 @@ export async function POST(request: Request) {
 
       console.log(`Using model: ${selectedModel}`);
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${geminiApiKey}`;
-      
-      const prompt = `Extract the text from this ID card. I need the name, course, and roll number (or student ID).
-      Return ONLY a JSON object with the exact keys: "name", "course", "rollNo".
-      If you cannot find a value, use an empty string.`;
 
       const geminiResponse = await fetch(geminiUrl, {
         method: 'POST',
@@ -86,7 +131,7 @@ export async function POST(request: Request) {
       }
 
       const textOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      
+      rawText = textOutput;
       try {
         const parsed = JSON.parse(textOutput);
         extractedFields = {
@@ -96,17 +141,13 @@ export async function POST(request: Request) {
           confidence: (parsed.name && parsed.course && parsed.rollNo) ? 'high' : 
                       (parsed.name || parsed.course || parsed.rollNo) ? 'low' : 'not_found'
         };
-        rawText = textOutput;
       } catch (e) {
         console.error('Failed to parse Gemini JSON:', textOutput);
-        rawText = textOutput;
-        extractedFields = parseOCRText(rawText); // Fallback if it fails to give JSON
+        extractedFields = parseOCRText(textOutput); 
       }
       
     } else {
-      // Mocked response for development when API key is not available
-      console.log('No GEMINI_API_KEY found, using mock OCR response.');
-      // Simulate network delay
+      console.log('No API key found, using mock OCR response.');
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       rawText = `
