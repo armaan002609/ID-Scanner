@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
       
       const prompt = `Extract the text from this ID card. I need the name, course, and roll number (or student ID).
       Return ONLY a JSON object with the exact keys: "name", "course", "rollNo".
