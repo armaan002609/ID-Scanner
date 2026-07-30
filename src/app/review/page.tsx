@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, Save, AlertCircle } from 'lucide-react';
 import { db } from '@/lib/db';
 import Link from 'next/link';
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 import { parseOCRText } from '@/lib/ocr-mapping';
 
 export default function ReviewPage() {
@@ -40,9 +40,9 @@ export default function ReviewPage() {
     try {
       const worker = await createWorker('eng');
       
-      // Optimize Tesseract for blocks of text (PSM 6)
+      // Optimize Tesseract for blocks of text (PSM 6 = SINGLE_BLOCK)
       await worker.setParameters({
-        tessedit_pageseg_mode: '6',
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       });
       
       const ret = await worker.recognize(base64Img);
